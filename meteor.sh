@@ -4,13 +4,13 @@
 
 # This will be used in URLs and file paths, so don't get too fancy
 # Alphanumeric characters and underscores should be ok
-export APP_NAME=iowarti
+export APP_NAME=meteorapp
 
 # IP or URL of the server you want to deploy to
-export APP_HOST=ec2-54-235-38-67.compute-1.amazonaws.com
+export APP_HOST=http://example.com
 
 # pem file
-export SSH_PEM=/ec2_ssh/edSpringWeb.pem
+export SSH_PEM=/path/to/local/pem/file
 
 # You usually don't need to change anything below this line
 
