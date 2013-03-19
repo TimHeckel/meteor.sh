@@ -4,14 +4,17 @@
 
 # This will be used in URLs and file paths, so don't get too fancy
 # Alphanumeric characters and underscores should be ok
-export APP_NAME=meteorapp
+export APP_NAME=iowarti
 
 # IP or URL of the server you want to deploy to
-export APP_HOST=example.com
+export APP_HOST=ec2-54-235-38-67.compute-1.amazonaws.com
+
+# pem file
+export SSH_PEM=/ec2_ssh/edSpringWeb.pem
 
 # You usually don't need to change anything below this line
 
-export SSH_HOST=root@$APP_HOST
+export SSH_HOST=ubuntu@$APP_HOST
 export ROOT_URL=http://$APP_HOST
 export APP_DIR=/var/www/$APP_NAME
 export MONGO_URL=mongodb://localhost:27017/$APP_NAME
@@ -25,7 +28,8 @@ case "$1" in
 setup )
 echo Preparing the server...
 echo Get some coffee, this will take a while.
-ssh $SSH_HOST APP_DIR=$APP_DIR DEBIAN_FRONTEND=noninteractive 'bash -s' > /dev/null 2>&1 <<'ENDSSH'
+ssh -i $SSH_PEM $SSH_HOST APP_DIR=$APP_DIR DEBIAN_FRONTEND=noninteractive 'bash -s' > /dev/null 2>&1 <<'ENDSSH'
+sudo su
 apt-get update
 apt-get install -y python-software-properties
 add-apt-repository ppa:chris-lea/node.js-legacy
@@ -37,25 +41,26 @@ echo Done. You can now deploy your app.
 ;;
 deploy )
 echo Deploying...
-$METEOR_CMD bundle bundle.tgz > /dev/null 2>&1 &&
-scp bundle.tgz $SSH_HOST:/tmp/ > /dev/null 2>&1 &&
-rm bundle.tgz > /dev/null 2>&1 &&
-ssh $SSH_HOST MONGO_URL=$MONGO_URL ROOT_URL=$ROOT_URL APP_DIR=$APP_DIR 'bash -s' > /dev/null 2>&1 <<'ENDSSH'
+$METEOR_CMD bundle bundle.tgz
+scp -i $SSH_PEM bundle.tgz $SSH_HOST:/tmp/
+rm bundle.tgz
+echo pre ssh app dir: $APP_DIR
+ssh -i $SSH_PEM $SSH_HOST MONGO_URL=$MONGO_URL ROOT_URL=$ROOT_URL APP_DIR=$APP_DIR 'bash -s' <<'ENDSSH'
 if [ ! -d "$APP_DIR" ]; then
-mkdir -p $APP_DIR
-chown -R www-data:www-data $APP_DIR
+sudo mkdir -p $APP_DIR
+sudo chown -R www-data:www-data $APP_DIR
 fi
 pushd $APP_DIR
-forever stop bundle/main.js
-rm -rf bundle
-tar xfz /tmp/bundle.tgz -C $APP_DIR
-rm /tmp/bundle.tgz
+sudo forever stop bundle/main.js
+sudo rm -rf bundle
+sudo tar xfz /tmp/bundle.tgz -C $APP_DIR
+sudo rm /tmp/bundle.tgz
 pushd bundle/server/node_modules
-rm -rf fibers
-npm install fibers
+sudo rm -rf fibers
+sudo npm install fibers
 popd
-chown -R www-data:www-data bundle
-patch -u bundle/server/server.js <<'ENDPATCH'
+sudo chown -R www-data:www-data bundle
+sudo patch -u bundle/server/server.js <<'ENDPATCH'
 @@ -286,6 +286,8 @@
      app.listen(port, function() {
        if (argv.keepalive)
@@ -66,7 +71,7 @@ patch -u bundle/server/server.js <<'ENDPATCH'
  
    }).run();
 ENDPATCH
-forever start bundle/main.js
+sudo forever start bundle/main.js
 popd
 ENDSSH
 echo Your app is deployed and serving on: $ROOT_URL
